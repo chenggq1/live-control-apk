@@ -8,10 +8,18 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    container: kivy/buildozer:latest
+    container:
+      image: kivy/buildozer:latest
+      options: --user user
     steps:
     - name: Checkout
       uses: actions/checkout@v4
+
+    - name: Fix permissions
+      run: |
+        whoami
+        ls -la
+        chmod -R u+rwX .
 
     - name: Build APK
       run: |
