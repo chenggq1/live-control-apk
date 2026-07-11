@@ -25,6 +25,7 @@ fullscreen = 0
 android.api = 34
 android.minapi = 24
 android.arch = arm64-v8a,armeabi-v7a
+android.accept_sdk_license = True
 
 # 权限
 android.permissions = BLUETOOTH,BLUETOOTH_ADMIN,BLUETOOTH_CONNECT,BLUETOOTH_SCAN,INTERNET,ACCESS_FINE_LOCATION,ACCESS_COARSE_LOCATION,FOREGROUND_SERVICE

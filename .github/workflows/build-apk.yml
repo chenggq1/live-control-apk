@@ -33,6 +33,7 @@ jobs:
       env:
         JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
         ANDROID_HOME: /home/runner/.buildozer/android/platform/android-sdk
+        ANDROID_SDK_ROOT: /home/runner/.buildozer/android/platform/android-sdk
         BUILDOZER_WARN_ON_ROOT: "1"
 
     - name: Upload APK
