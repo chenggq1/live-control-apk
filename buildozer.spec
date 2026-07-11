@@ -71,11 +71,11 @@ no-compile-pyo = False
 # private.imports = 
 
 # JNIus配置
-android.add_src = 
+# android.add_src =
 
 # Java编译
-android.add_jars = 
-android.add_aars = 
+# android.add_jars =
+# android.add_aars =
 
 # 签名 (发布时需要设置)
 # android.numeric_version = 1
