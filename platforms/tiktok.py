@@ -15,6 +15,7 @@ from platforms.base import BasePlatform
 from engine.models import LiveMessage, MessageType, PlatformType
 from utils import protobuf_lite as pb
 from utils.logger import get_logger
+from utils.network import safe_request_get, get_ws_sslopt
 
 logger = get_logger().get_child('TikTok')
 
@@ -115,7 +116,7 @@ class TiktokPlatform(BasePlatform):
         """从TikTok页面获取房间ID"""
         try:
             url = f"https://www.tiktok.com/@{self._username}" if self._username else f"https://www.tiktok.com/"
-            resp = requests.get(url, headers=self._headers, timeout=15)
+            resp = safe_request_get(url, headers=self._headers, timeout=15)
             self._cookies = dict(resp.cookies)
 
             text = resp.text
@@ -233,6 +234,7 @@ class TiktokPlatform(BasePlatform):
                     ping_interval=10,
                     ping_timeout=5,
                     suppress_origin=True,
+                    sslopt=get_ws_sslopt(),
                 )
 
             except Exception as e:

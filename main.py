@@ -12,6 +12,13 @@ import threading
 # 确保项目根目录在path中
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+# 初始化网络配置（解决Android SSL证书问题）
+try:
+    from utils.network import init_network
+    init_network()
+except Exception as e:
+    print(f"[WARN] 网络初始化失败: {e}")
+
 from kivy.app import App
 from kivy.clock import Clock
 from kivy.core.window import Window
@@ -313,10 +320,12 @@ class PlatformTab(BoxLayout):
                 platform.connect(url)
                 self.platform_instances[key] = platform
             except Exception as e:
+                err_msg = str(e)[:100]
+                traceback.print_exc()
                 Clock.schedule_once(lambda dt: (
-                    setattr(status_label, 'text', f'● 连接失败'),
+                    setattr(status_label, 'text', f'● 连接失败: {err_msg[:30]}'),
                     setattr(status_label, 'color', COLORS['accent']),
-                    self.app.show_snack(f'连接失败: {e}')
+                    self.app.show_snack(f'连接失败: {err_msg}')
                 ), 0)
 
         threading.Thread(target=_do_connect, daemon=True).start()

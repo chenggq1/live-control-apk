@@ -16,6 +16,7 @@ from platforms.base import BasePlatform
 from engine.models import LiveMessage, MessageType, PlatformType
 from utils import protobuf_lite as pb
 from utils.logger import get_logger
+from utils.network import safe_request_get, get_ws_sslopt
 
 logger = get_logger().get_child('Douyin')
 
@@ -105,7 +106,7 @@ class DouyinPlatform(BasePlatform):
         """获取房间信息和cookies"""
         try:
             url = f"https://live.douyin.com/{room_id}"
-            resp = requests.get(url, headers=self._headers, timeout=10, allow_redirects=True)
+            resp = safe_request_get(url, headers=self._headers, timeout=15, allow_redirects=True)
             self._cookies = dict(resp.cookies)
 
             # 提取ttwid
@@ -226,6 +227,7 @@ class DouyinPlatform(BasePlatform):
                     ping_interval=10,
                     ping_timeout=5,
                     suppress_origin=True,
+                    sslopt=get_ws_sslopt(),
                 )
 
             except Exception as e:
