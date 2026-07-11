@@ -1,0 +1,10 @@
+.buildozer/
+bin/
+__pycache__/
+*.pyc
+*.zip
+build_log.txt
+*.db
+*.log
+test_*.json
+test_*.db
