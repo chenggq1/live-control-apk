@@ -8,23 +8,17 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    container:
-      image: kivy/buildozer:latest
-      options: --user user
+    container: kivy/buildozer:latest
+    env:
+      BUILDOZER_WARN_ON_ROOT: "1"
     steps:
     - name: Checkout
       uses: actions/checkout@v4
 
-    - name: Fix permissions
-      run: |
-        whoami
-        ls -la
-        chmod -R u+rwX .
-
     - name: Build APK
       run: |
         set -o pipefail
-        buildozer -v android debug 2>&1 | tee build_log.txt
+        yes | buildozer -v android debug 2>&1 | tee build_log.txt
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
