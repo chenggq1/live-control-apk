@@ -7,7 +7,7 @@ package.domain = org.livecontrol
 
 # 源码目录
 source.dir = .
-source.include_exts = py,png,jpg,kv,atlas,json
+source.include_exts = py,png,jpg,kv,atlas,json,ttf
 
 # 版本
 version = 1.0.0

@@ -15,6 +15,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from kivy.app import App
 from kivy.clock import Clock
 from kivy.core.window import Window
+from kivy.core.text import LabelBase
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.label import Label
@@ -28,6 +29,37 @@ from kivy.uix.tabbedpanel import TabbedPanel, TabbedPanelItem
 from kivy.graphics import Color, Rectangle, RoundedRectangle
 from kivy.metrics import dp, sp
 from kivy.properties import StringProperty, BooleanProperty, NumericProperty, ListProperty
+
+# ===== 注册中文字体，解决Android中文乱码 =====
+def _register_chinese_font():
+    """注册中文字体，解决Android上中文显示为方块/乱码的问题"""
+    _app_dir = os.path.dirname(os.path.abspath(__file__))
+
+    # 1. 优先使用打包在APK中的字体
+    bundled_font = os.path.join(_app_dir, 'simhei.ttf')
+    if os.path.exists(bundled_font):
+        LabelBase.register('Roboto', bundled_font)
+        print(f"[FONT] 使用打包中文字体: {bundled_font}")
+        return True
+
+    # 2. 尝试Android系统自带中文字体
+    system_fonts = [
+        '/system/fonts/DroidSansFallback.ttf',
+        '/system/fonts/NotoSansCJK-Regular.ttc',
+        '/system/fonts/NotoSansSC-Regular.otf',
+        '/system/fonts/SourceHanSansCN-Regular.otf',
+    ]
+    for fp in system_fonts:
+        if os.path.exists(fp):
+            LabelBase.register('Roboto', fp)
+            print(f"[FONT] 使用系统中文字体: {fp}")
+            return True
+
+    print("[FONT] 警告: 未找到中文字体，中文可能显示乱码")
+    return False
+
+_register_chinese_font()
+# ===== 中文字体注册结束 =====
 
 # 尝试导入KivyMD，失败则使用纯Kivy
 try:
