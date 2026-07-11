@@ -10,16 +10,18 @@ from engine.models import BluetoothConfig, CommandRule
 
 def get_data_dir() -> str:
     """获取可写数据目录 - Android/桌面兼容"""
-    # Android环境
-    if 'android' in sys.modules or 'jnius' in sys.modules:
-        try:
-            from jnius import autoclass
-            PythonActivity = autoclass('org.kivy.android.PythonActivity')
-            context = PythonActivity.mActivity
-            files_dir = context.getFilesDir().getAbsolutePath()
-            return files_dir
-        except Exception:
-            pass
+    # Android环境 - 尝试直接导入jnius检测
+    try:
+        from jnius import autoclass
+        PythonActivity = autoclass('org.kivy.android.PythonActivity')
+        context = PythonActivity.mActivity
+        files_dir = context.getFilesDir().getAbsolutePath()
+        return files_dir
+    except Exception:
+        pass
+    # 检查Android环境变量
+    if 'ANDROID_APP_PATH' in os.environ:
+        return os.environ['ANDROID_APP_PATH']
     # 桌面环境
     return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 

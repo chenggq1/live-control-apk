@@ -13,7 +13,7 @@ source.include_exts = py,png,jpg,kv,atlas,json
 version = 1.0.0
 
 # 需求（sqlite3是Python内置模块，不需要列出）
-requirements = python3,kivy,pyjnius,requests,websocket-client
+requirements = python3,kivy,pyjnius,requests,urllib3,certifi,chardet,idna,websocket-client
 
 # 方向
 orientation = portrait

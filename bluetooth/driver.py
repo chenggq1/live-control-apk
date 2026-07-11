@@ -13,7 +13,7 @@ logger = get_logger().get_child('AndroidBT')
 # 检测是否在Android环境
 IS_ANDROID = False
 try:
-    from jnius import autoclass, cast, JavaClass, meta_method
+    from jnius import autoclass, cast
     IS_ANDROID = True
     logger.info("pyjnius可用，运行在Android环境")
 except ImportError:
@@ -79,6 +79,7 @@ class AndroidBluetoothDriver:
         try:
             if self._adapter.isEnabled():
                 return True
+            BluetoothAdapter = autoclass('android.bluetooth.BluetoothAdapter')
             Intent = autoclass('android.content.Intent')
             context = autoclass('org.kivy.android.PythonActivity').mActivity
             intent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)

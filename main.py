@@ -6,6 +6,7 @@ import os
 import sys
 import json
 import time
+import traceback
 import threading
 
 # 确保项目根目录在path中
@@ -48,20 +49,64 @@ try:
 except ImportError:
     KIVYMD = False
 
-# 导入项目模块
-from config.settings import AppSettings
-from config.database import Database
-from engine.models import (LiveMessage, CommandRule, BluetoothConfig,
-                           MessageType, PlatformType, TriggerType)
-from engine.command_engine import CommandEngine
-from bluetooth.driver import AndroidBluetoothDriver
-from platforms.douyin import DouyinPlatform
-from platforms.tiktok import TiktokPlatform
-from platforms.kuaishou import KuaishouPlatform
-from platforms.xiaohongshu import XiaohongshuPlatform
-from utils.logger import get_logger
+# 延迟导入项目模块 - 避免启动时崩溃
+_settings = None
+_db = None
+_engine = None
+_platforms_mod = {}
+_bluetooth_driver = None
+_models = {}
 
-logger = get_logger()
+def _init_modules():
+    """延迟初始化所有项目模块"""
+    global _settings, _db, _engine, _bluetooth_driver, _models
+    try:
+        from config.settings import AppSettings
+        from config.database import Database
+        from engine.models import (LiveMessage, CommandRule, BluetoothConfig,
+                                   MessageType, PlatformType, TriggerType)
+        from engine.command_engine import CommandEngine
+        from bluetooth.driver import AndroidBluetoothDriver
+        from utils.logger import get_logger
+
+        _settings = AppSettings()
+        _db = Database()
+        _engine = CommandEngine(_settings, _db)
+        _engine.start()
+        _bluetooth_driver = AndroidBluetoothDriver
+        _models = {
+            'LiveMessage': LiveMessage,
+            'CommandRule': CommandRule,
+            'BluetoothConfig': BluetoothConfig,
+            'MessageType': MessageType,
+            'PlatformType': PlatformType,
+            'TriggerType': TriggerType,
+        }
+    except Exception as e:
+        traceback.print_exc()
+        raise
+
+def _import_platforms():
+    """延迟导入平台模块"""
+    global _platforms_mod
+    if _platforms_mod:
+        return
+    try:
+        from platforms.douyin import DouyinPlatform
+        from platforms.tiktok import TiktokPlatform
+        from platforms.kuaishou import KuaishouPlatform
+        from platforms.xiaohongshu import XiaohongshuPlatform
+        _platforms_mod = {
+            'douyin': ('抖音', DouyinPlatform),
+            'kuaishou': ('快手', KuaishouPlatform),
+            'xiaohongshu': ('小红书', XiaohongshuPlatform),
+            'tiktok': ('TikTok', TiktokPlatform),
+        }
+    except Exception as e:
+        traceback.print_exc()
+        raise
+
+logger = None
 
 # 颜色主题
 COLORS = {
@@ -76,12 +121,8 @@ COLORS = {
     'divider': (0.25, 0.25, 0.30, 1),
 }
 
-PLATFORMS = {
-    'douyin': ('抖音', DouyinPlatform),
-    'kuaishou': ('快手', KuaishouPlatform),
-    'xiaohongshu': ('小红书', XiaohongshuPlatform),
-    'tiktok': ('TikTok', TiktokPlatform),
-}
+# 平台注册 - 延迟加载
+PLATFORMS = {}
 
 
 class ColoredLabel(Label):
@@ -148,6 +189,8 @@ class PlatformTab(BoxLayout):
         container = BoxLayout(orientation='vertical', spacing=dp(12), size_hint_y=None)
         container.bind(minimum_height=container.setter('height'))
 
+        # 确保平台模块已加载
+        _import_platforms()
         for key, (name, cls) in PLATFORMS.items():
             card = self._build_platform_card(key, name)
             container.add_widget(card)
@@ -159,24 +202,11 @@ class PlatformTab(BoxLayout):
         card = CardLayout(height=dp(165))
         # 平台名称行
         header = BoxLayout(orientation='horizontal', size_hint_y=None, height=dp(35))
-        header.add_widget(Label(
-            text=f'[b]{name}[/b]', markup=True,
-            color=COLORS['text'], font_size=sp(17),
-            size_hint_x=0.4, halign='left', valign='middle',
-        ))
-        header.add_widget(Label(
-            text='● 未连接',
-            color=COLORS['text_dim'], font_size=sp(13),
-            size_hint_x=0.6, halign='right', valign='middle',
-            id=f'status_{key}'
-        ))
-        # 给Label设置id需要通过属性
         status_label = Label(
             text='● 未连接',
             color=COLORS['text_dim'], font_size=sp(13),
             size_hint_x=0.6, halign='right', valign='middle',
         )
-        header.clear_widgets()
         header.add_widget(Label(
             text=f'[b]{name}[/b]', markup=True,
             color=COLORS['text'], font_size=sp(17),
@@ -236,7 +266,6 @@ class PlatformTab(BoxLayout):
             self.app.show_snack('请输入直播间链接')
             return
 
-        name = PLATFORMS[key][0]
         status_label.text = '● 连接中...'
         status_label.color = COLORS['warning']
 
@@ -261,7 +290,6 @@ class PlatformTab(BoxLayout):
         threading.Thread(target=_do_connect, daemon=True).start()
 
     def _on_status(self, key, connected, msg, status_label):
-        name = PLATFORMS[key][0]
         if connected:
             status_label.text = f'● {msg}'
             status_label.color = COLORS['success']
@@ -444,6 +472,7 @@ class BluetoothTab(BoxLayout):
 
     def _save_config(self):
         is_ble = 'BLE' in self.type_spinner.text
+        BluetoothConfig = _models['BluetoothConfig']
         cfg = BluetoothConfig(
             connection_type='ble' if is_ble else 'serial',
             port=self.addr_input.text.strip(),
@@ -459,10 +488,9 @@ class BluetoothTab(BoxLayout):
     def _on_scan(self, btn):
         self.app.show_snack('正在扫描已配对设备...')
         def _scan():
-            driver = AndroidBluetoothDriver(self._save_config())
+            driver = _bluetooth_driver(self._save_config())
             devices = driver.scan_paired_devices()
             if devices:
-                names = '\n'.join(f"{d['name']} - {d['address']}" for d in devices)
                 Clock.schedule_once(lambda dt: self._show_device_list(devices), 0)
             else:
                 Clock.schedule_once(lambda dt: self.app.show_snack('未找到已配对设备'), 0)
@@ -691,6 +719,7 @@ class CommandTab(BoxLayout):
 
     def _show_edit_dialog(self, cmd):
         is_edit = cmd is not None
+        CommandRule = _models['CommandRule']
 
         content = BoxLayout(orientation='vertical', spacing=dp(8), padding=dp(15))
         scroll = ScrollView(size_hint=(1, 1))
@@ -909,6 +938,7 @@ class MonitorTab(BoxLayout):
         if len(self.msg_container.children) > 200:
             self.msg_container.remove_widget(self.msg_container.children[-1])
 
+        MessageType = _models['MessageType']
         color_map = {
             MessageType.COMMENT: COLORS['text'],
             MessageType.GIFT: COLORS['warning'],
@@ -1112,6 +1142,7 @@ class DebugTab(BoxLayout):
         return layout
 
     def _refresh_log(self, dt):
+        from utils.logger import get_logger
         history = get_logger().get_history()
         if not history:
             return
@@ -1176,6 +1207,48 @@ class DebugTab(BoxLayout):
             self.trigger_container.add_widget(label)
 
 
+class CrashScreen(BoxLayout):
+    """崩溃错误显示页"""
+    def __init__(self, error_text, **kwargs):
+        super().__init__(**kwargs)
+        self.orientation = 'vertical'
+        self.padding = dp(20)
+        self.spacing = dp(10)
+
+        title = Label(
+            text='[b]应用启动出错[/b]',
+            markup=True, color=COLORS['accent'],
+            font_size=sp(22), size_hint_y=None, height=dp(50),
+            halign='center', valign='middle',
+        )
+        title.bind(size=lambda *x: title.setter('text_size')(title, title.size))
+        self.add_widget(title)
+
+        info = Label(
+            text='以下是错误信息，请截图反馈：',
+            color=COLORS['text_dim'], font_size=sp(14),
+            size_hint_y=None, height=dp(30),
+            halign='center', valign='middle',
+        )
+        info.bind(size=lambda *x: info.setter('text_size')(info, info.size))
+        self.add_widget(info)
+
+        scroll = ScrollView(size_hint=(1, 1))
+        error_label = Label(
+            text=error_text,
+            color=COLORS['text'], font_size=sp(12),
+            size_hint_y=None,
+            halign='left', valign='top',
+            markup=False,
+        )
+        error_label.bind(
+            width=lambda *x: error_label.setter('text_size')(error_label, (error_label.width - dp(10), None)),
+            texture_size=lambda *x: setattr(error_label, 'height', error_label.texture_size[1])
+        )
+        scroll.add_widget(error_label)
+        self.add_widget(scroll)
+
+
 class LiveControlApp(App):
     """直播互动蓝牙控制台 - Android主应用"""
 
@@ -1183,11 +1256,27 @@ class LiveControlApp(App):
         super().__init__(**kwargs)
 
     def build(self):
-        # 初始化核心模块
-        self.settings = AppSettings()
-        self.db = Database()
-        self.engine = CommandEngine(self.settings, self.db)
-        self.engine.start()
+        # 全局错误捕获
+        try:
+            return self._build_app()
+        except Exception as e:
+            err = traceback.format_exc()
+            print(f"[FATAL] {err}", file=sys.stderr)
+            return CrashScreen(f"{type(e).__name__}: {e}\n\n{err}")
+
+    def _build_app(self):
+        # 初始化核心模块（延迟导入）
+        _init_modules()
+
+        # 导入平台模块
+        global PLATFORMS
+        _import_platforms()
+        PLATFORMS = _platforms_mod
+
+        # 设置全局变量
+        self.settings = _settings
+        self.db = _db
+        self.engine = _engine
         self.platform_status_labels = {}
 
         # 设置窗口
