@@ -12,8 +12,8 @@ source.include_exts = py,png,jpg,kv,atlas,json
 # 版本
 version = 1.0.0
 
-# 需求
-requirements = python3,kivy,pyjnius,requests,websocket-client,sqlite3
+# 需求（sqlite3是Python内置模块，不需要列出）
+requirements = python3,kivy,pyjnius,requests,websocket-client,pycryptodome
 
 # 方向
 orientation = portrait
@@ -51,7 +51,7 @@ python.cpython = auto
 log_level = 2
 
 # 构建模式
-android.debuggable = False
+android.debuggable = True
 
 #.gradle版本
 android.gradle_version = 7.6

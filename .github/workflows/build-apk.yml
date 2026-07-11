@@ -20,10 +20,11 @@ jobs:
     - name: Install system dependencies
       run: |
         sudo apt-get update -qq
-        sudo apt-get install -y -qq openjdk-17-jdk autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo5 cmake libffi-dev libssl-dev
+        sudo apt-get install -y -qq openjdk-17-jdk autoconf libtool pkg-config zlib1g-dev libncurses-dev libffi-dev libssl-dev ccache git zip unzip
 
     - name: Install buildozer
       run: |
+        pip install --upgrade pip
         pip install buildozer Cython==0.29.36
 
     - name: Build APK
@@ -32,18 +33,24 @@ jobs:
       env:
         JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
         ANDROID_HOME: /home/runner/.buildozer/android/platform/android-sdk
+        BUILDOZER_WARN_ON_ROOT: "1"
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
+      if: always()
       with:
         name: livecontrol-apk
         path: bin/*.apk
+        if-no-files-found: ignore
         retention-days: 30
 
-    - name: Upload build log on failure
+    - name: Upload build log
       if: always()
       uses: actions/upload-artifact@v4
       with:
         name: build-log
-        path: build_log.txt
+        path: |
+          build_log.txt
+          .buildozer/android/platform/build-arm64-v8a/build/python-for-android-*/python-for-android/build_logs/
+        if-no-files-found: ignore
         retention-days: 7
