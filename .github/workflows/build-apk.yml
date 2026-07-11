@@ -20,7 +20,7 @@ jobs:
     - name: Install system dependencies
       run: |
         sudo apt-get update -qq
-        sudo apt-get install -y -qq openjdk-17-jdk autoconf libtool pkg-config zlib1g-dev libncurses-dev libffi-dev libssl-dev ccache git zip unzip
+        sudo apt-get install -y -qq openjdk-17-jdk autoconf automake libtool pkg-config zlib1g-dev libncurses-dev libffi-dev libssl-dev ccache git zip unzip texinfo
 
     - name: Install buildozer
       run: |
@@ -29,12 +29,14 @@ jobs:
 
     - name: Build APK
       run: |
+        set -o pipefail
         buildozer -v android debug 2>&1 | tee build_log.txt
       env:
         JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
         ANDROID_HOME: /home/runner/.buildozer/android/platform/android-sdk
         ANDROID_SDK_ROOT: /home/runner/.buildozer/android/platform/android-sdk
         BUILDOZER_WARN_ON_ROOT: "1"
+        ACLOCAL_PATH: /usr/share/aclocal
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
